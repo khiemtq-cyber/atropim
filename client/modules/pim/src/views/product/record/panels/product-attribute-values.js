@@ -43,7 +43,9 @@ Espo.define('pim:views/product/record/panels/product-attribute-values', ['views/
             'productFamilyAttributeId',
             'scope',
             'value',
-            'attributeIsMultilang'
+            'attributeIsMultilang',
+            'ownerUserId',
+            'ownerUserName'
         ],
 
         groupKey: 'attributeGroupId',
@@ -285,11 +287,25 @@ Espo.define('pim:views/product/record/panels/product-attribute-values', ['views/
                         model: attributeModel,
                         link: attributeModel.defs.links[this.link].foreign
                     });
-                    let attributes = {
-                        assignedUserId: this.getUser().id,
-                        assignedUserName: this.getUser().get('name'),
-                        scope: 'Global'
-                    };
+                    let config = this.getConfig(),
+                        assignedUser = config.get('assignedUserAttributeOwnership'),
+                        ownerUser = config.get('ownerUserAttributeOwnership'),
+                        teams = config.get('teamsAttributeOwnership'),
+                        attributes = {},
+                        relatedModel = null;
+
+                    debugger;
+                    relatedModel = this.getOwnershipModel(assignedUser, this.model, attributeModel);
+                    attributes = _.extend(attributes, this.setupOwnershipField(assignedUser, 'assignedUser', relatedModel));
+
+                    relatedModel = this.getOwnershipModel(ownerUser, this.model, attributeModel);
+                    attributes = _.extend(attributes, this.setupOwnershipField(ownerUser, 'ownerUser', relatedModel));
+
+                    relatedModel = this.getOwnershipModel(teams, this.model, attributeModel);
+                    attributes = _.extend(attributes, this.setupOwnershipField(teams, 'teams', attributeModel, relatedModel));
+
+                    attributes.scope = 'Global';
+
                     if (['enum'].includes(attributeModel.get('type'))) {
                         attributes.value = (attributeModel.get('typeValue') || [])[0];
                         if (this.getConfig().get('isMultilangActive') && (this.getConfig().get('inputLanguageList') || []).length) {
@@ -305,6 +321,41 @@ Espo.define('pim:views/product/record/panels/product-attribute-values', ['views/
                 this.notify('Linked', 'success');
                 this.actionRefresh();
             });
+        },
+
+        getOwnershipModel(param, productModel, attributeModel) {
+            if (param === 'fromProduct') {
+                return productModel;
+            } else if (param === 'fromAttribute') {
+                return attributeModel;
+            }
+
+            return null;
+        },
+
+        setupOwnershipField(param, field, model) {
+            let isLinkMultiple = (this.getMetadata().get(['entityDefs', this.scope, 'fields', field, 'type']) === 'linkMultiple'),
+                idField = field + (isLinkMultiple ? 'Ids' : 'Id'),
+                nameField = field + (isLinkMultiple ? 'Names' : 'Name'),
+                data = {};
+
+            switch (param) {
+                case 'fromAttribute':
+                case 'fromProduct':
+                    data = {
+                        [idField]: model.get(idField),
+                        [nameField]: model.get(nameField)
+                    };
+                    break;
+                case 'notInherit':
+                    data = {
+                        [idField]: null,
+                        [nameField]: null
+                    };
+                    break;
+            }
+
+            return data;
         },
 
         actionSelectAttributeGroup() {

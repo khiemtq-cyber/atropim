@@ -29,7 +29,14 @@
 Espo.define('pim:views/attribute/modals/select-records', 'views/modals/select-records',
     Dep => Dep.extend({
 
-        mandatorySelectAttributeList: ['typeValue'],
+        mandatorySelectAttributeList: [
+            'typeValue',
+            'assignedUserName',
+            'ownerUserId',
+            'ownerUserName',
+            'teamsIds',
+            'teamsNames'
+        ],
 
         loadList() {
             let inputLanguageList = this.getConfig().get('inputLanguageList') || [];

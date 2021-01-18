@@ -461,6 +461,7 @@ class Product extends AbstractRepository
         parent::init();
 
         $this->addDependency('language');
+        $this->addDependency('user');
     }
 
     /**
@@ -530,6 +531,8 @@ class Product extends AbstractRepository
                 $productAttributeValue->skipVariantValidation = true;
                 $productAttributeValue->skipProductChannelValidation = true;
 
+                $this->setupProductAttributeValueOwnership($productAttributeValue, $product, $productFamilyAttribute->get('attribute'));
+
                 // save
                 try {
                     $this->getEntityManager()->saveEntity($productAttributeValue);
@@ -548,6 +551,69 @@ class Product extends AbstractRepository
         }
 
         return true;
+    }
+
+    /**
+     * @param Entity $pav
+     * @param Entity $product
+     * @param Entity $attribute
+     */
+    protected function setupProductAttributeValueOwnership(Entity $pav, Entity $product, Entity $attribute)
+    {
+        if ($pav->isNew()) {
+            $assignedUserOwnership = $this->getConfig()->get('assignedUserAttributeOwnership', '');
+            $ownerUserOwnership = $this->getConfig()->get('ownerUserAttributeOwnership', '');
+            $teamsOwnership = $this->getConfig()->get('teamsAttributeOwnership', '');
+
+            $this->setupOwnershipField($pav, $product, $attribute, $assignedUserOwnership, 'assignedUserId');
+            $this->setupOwnershipField($pav, $product, $attribute, $ownerUserOwnership, 'ownerUserId');
+            $this->setupOwnershipField($pav, $product, $attribute, $teamsOwnership, 'teamsIds');
+        }
+    }
+
+    /**
+     * @param Entity $pav
+     * @param Entity $product
+     * @param Entity $attribute
+     * @param string $param
+     * @param string $field
+     */
+    protected function setupOwnershipField(Entity $pav, Entity $product, Entity $attribute, string $param, string $field)
+    {
+        switch ($param) {
+            case 'fromProduct':
+                $value = $this->prepareOwnershipValue($product, $field);
+                $pav->set($field, $value);
+                break;
+            case 'fromAttribute':
+                $value = $this->prepareOwnershipValue($attribute, $field);
+                $pav->set($field, $value);
+                break;
+            case 'sameAsCreator':
+                $userField = in_array($field, ['assignedUserId', 'ownerUserId']) ? 'id' : $field;
+                $value = $this->prepareOwnershipValue($this->getInjection('user'), $userField);
+                $pav->set($field, $value);
+                break;
+            case 'notInherit':
+                $pav->set($field, null);
+                break;
+        }
+    }
+
+    /**
+     * @param Entity $entity
+     * @param string $field
+     * @return array|string|null
+     */
+    protected function prepareOwnershipValue(Entity $entity, string $field)
+    {
+        $value = $entity->get($field);
+
+        if ($field === 'teamsIds') {
+            $value = array_column($entity->get('teams')->toArray(), 'id');
+        }
+
+        return $value;
     }
 
     /**
