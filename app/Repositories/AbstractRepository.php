@@ -67,6 +67,11 @@ abstract class AbstractRepository extends Base
     protected $teamsOwnership;
 
     /**
+     * @var array
+     */
+    protected $ownershipSettings;
+
+    /**
      * @var int
      */
     public const RECORDS_PER_QUERY = 500;
@@ -295,5 +300,47 @@ abstract class AbstractRepository extends Base
     protected function getInheritedEntity(Entity $entity, string $config): ?Entity
     {
         return null;
+    }
+
+    /**
+     * @param Entity $entity
+     *
+     * @return array
+     */
+    protected function getEntityOwnershipRelation(Entity $entity): array
+    {
+        $result = [];
+
+        foreach ($this->ownershipSettings as $field => $setting) {
+            if (!empty($inherited = $this->getInheritedEntity($entity, $this->getConfig()->get($setting)))) {
+                $entityField = lcfirst($inherited->getEntityType()) . 'Id';
+
+                if (isset($result[$entityField])) {
+                    $result[$entityField][] = $field;
+                } else {
+                    $result[$entityField] = [$field];
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param Entity $entity
+     */
+    protected function inheritAfterChangeField(Entity $entity)
+    {
+        if (!empty($relations = $this->getEntityOwnershipRelation($entity))) {
+            foreach ($relations as $entityField => $targetFields) {
+                if ($entity->isAttributeChanged($entityField)) {
+                    foreach ($targetFields as $targetField) {
+                        if ($entity->get('isInherit' . ucfirst($targetField))) {
+                            $this->inheritOwnership($entity, $targetField, $this->getConfig()->get($this->ownershipSettings[$targetField], null));
+                        }
+                    }
+                }
+            }
+        }
     }
 }

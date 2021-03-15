@@ -43,6 +43,15 @@ use Treo\Core\Utils\Util;
 class ProductAttributeValue extends AbstractRepository
 {
     /**
+     * @var array
+     */
+    protected $ownershipSettings = [
+        'assignedUser' => 'assignedUserAttributeOwnership',
+        'ownerUser' => 'ownerUserAttributeOwnership',
+        'teams' => 'teamsAttributeOwnership'
+    ];
+
+    /**
      * @param string $pavId
      * @param string $locale
      *
@@ -156,6 +165,8 @@ class ProductAttributeValue extends AbstractRepository
         if (!$entity->isNew() && !empty($field = $this->getPreparedInheritedField($entity, 'teams', 'isInheritTeams'))) {
             $this->inheritOwnership($entity, $field, $this->getConfig()->get('teamsAttributeOwnership', null));
         }
+
+        $this->inheritAfterChangeField($entity);
 
         // update modifiedAt for product
         $this

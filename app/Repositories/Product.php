@@ -71,6 +71,15 @@ class Product extends AbstractRepository
     protected $teamsOwnership = 'teamsAttributeOwnership';
 
     /**
+     * @var array
+     */
+    protected $ownershipSettings = [
+        'assignedUser' => 'assignedUserProductOwnership',
+        'ownerUser' => 'ownerUserProductOwnership',
+        'teams' => 'teamsProductOwnership'
+    ];
+
+    /**
      * @return array
      */
     public function getInputLanguageList(): array
@@ -497,6 +506,8 @@ class Product extends AbstractRepository
         if (!$entity->isNew() && $entity->isAttributeChanged('isInheritTeams') && $entity->get('isInheritTeams')) {
             $this->inheritOwnership($entity, 'teams', $this->getConfig()->get('teamsProductOwnership', null));
         }
+
+        $this->inheritAfterChangeField($entity);
 
         // parent action
         parent::afterSave($entity, $options);

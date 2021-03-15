@@ -60,12 +60,8 @@ Espo.define('pim:views/record/detail-side', 'views/record/detail-side',
 
                     if (config && config !== 'notInherit') {
                         if (!required) {
-                            if (this.getParentView().mode === 'edit') {
-                                this.setEdit(fields[field]);
-                            }
-
                             this.listenTo(this.model, `change:${entityField}Id`, () => {
-                                if (this.model.get(entityField + 'Id') || null) {
+                                if (this.model.get(entityField + 'Id')) {
                                     fields[field].readOnly = true;
                                     let unlock = !this.model.get(this.getInheritedFieldName(field));
                                     this.changeFieldOwnership(fields[field].name, unlock);
@@ -76,6 +72,12 @@ Espo.define('pim:views/record/detail-side', 'views/record/detail-side',
                                     $(`a[data-name="${field}"][data-action="changeOwnership"]`).remove();
                                 }
                             });
+                        }
+
+                        if (!required && !this.model.get(entityField + 'Id')) {
+                            if (this.getParentView().mode === 'edit') {
+                                this.setEdit(fields[field]);
+                            }
                         } else {
                             fields[field].readOnly = true;
                             let unlock = !this.model.get(this.getInheritedFieldName(field));
